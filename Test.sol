@@ -27,13 +27,17 @@ contract Owned{
 
 contract Reestr is Owned {
     enum RequestType {NewHome, EditHome}
-    uint reqId;
+    enum OwnerOperationType {NewOwner, ChangeOwner, AddOwner}
+    uint private cost = 100 wei;
     
     mapping(address => Employee) private employees;
     mapping(address => Owner) private owners;
-    mapping(uint => Request) private requests;
+    mapping(address => Request) private requests;
+    address[] requestInitiator;
     mapping(string => Home) private homes;
     mapping(string => Ownership[]) private ownerships;
+    
+    uint private amount;
     
     struct Ownership
     {
@@ -58,13 +62,15 @@ contract Reestr is Owned {
     }
     
     struct Request{
-        uint id;
         RequestType requestType;
         //Home home;
         string homeAddr;
         uint homeArea;
         uint homeCost;
         uint result;
+        OwnerOperationType ownType;
+        address adr;
+        bool isProcessed;
     }
     
     struct Home{
@@ -74,12 +80,21 @@ contract Reestr is Owned {
     }
     
     
+    
     modifier OnlyEmployee{
         require(
             employees[msg.sender].isset != false,
             'Only Employee can run this function!'
             );
             _;
+    }
+    
+    modifier Costs(uint value){
+        require(
+            msg.value >= value,
+            'Not enough funds!!'
+            );
+        _;
     }
     
     function AddHome(string memory _adr, uint _area, uint _cost) public {
@@ -117,22 +132,50 @@ contract Reestr is Owned {
         delete employees[id];
     }
     
-    function AddNewHomeRequest(string memory _homeAddress, uint _homeArea, uint _homeCost) public{
+    function AddRequest(uint rType, string memory adr, uint area, uint cost, address newOwner) public Costs(cost) payable returns (bool)
+    {
         Request memory r;
-        r.id = reqId;
-        r.requestType = RequestType.NewHome;
-        r.homeAddr = _homeAddress;
-        r.homeArea = _homeArea;
-        r.homeCost = _homeCost;
-        requests[reqId] = r;
-        reqId++;
+        r.requestType = rType == 0? RequestType.NewHome: RequestType.EditHome;
+        r.homeAddr = adr;
+        r.homeArea = area;
+        r.homeCost = cost;
+        r.result = 0;
+        r.adr = rType==0?address(0):newOwner;
+        r.isProcessed = false;
+        requests[msg.sender] = r;
+        requestInitiator.push(msg.sender);
+        amount += msg.value;
+        return true;
     }
     
-    function GetRequestsList() public OnlyEmployee returns (Request[] memory request){
-        request = new Request[](reqId);
-        for (uint _i = 0; _i < reqId; _i++){
-            request[_i] = requests[_i];
+    function GetRequest() public OnlyEmployee returns (uint[] memory, uint[] memory, string[] memory)
+    {
+        uint[] memory ids = new uint[](requestInitiator.length);
+        uint[] memory types = new uint[](requestInitiator.length);
+        string[] memory homeAddresses = new string[](requestInitiator.length);
+        for(uint i=0;i!=requestInitiator.length;i++){
+            ids[i] = i;
+            types[i] = requests[requestInitiator[i]].requestType == RequestType.NewHome ? 0: 1;
+            homeAddresses[i] = requests[requestInitiator[i]].homeAddr;
         }
-        return request;
+        return (ids, types, homeAddresses);
     }
+    
+    function RequestPending(uint id) public OnlyEmployee returns (bool){
+        if(!requests[requestInitiator[id]].isProcessed){
+            requests[requestInitiator[id]].isProcessed = true;
+            return true;
+        }
+        return false;
+    }
+    
+    function EditCost(uint _cost) public OnlyOwner
+    {
+        cost = _cost;
+    }
+    
+    function GetCost() public returns (uint _cost){
+        return cost;
+    }
+    
 }
