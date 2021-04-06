@@ -97,6 +97,7 @@ contract Reestr is Owned {
         _;
     }
     
+    //Home functions
     function AddHome(string memory _adr, uint _area, uint _cost) public {
         Home memory h;
         h.homeAddress = _adr;
@@ -109,6 +110,7 @@ contract Reestr is Owned {
         return (homes[adr].area, homes[adr].cost);
     }
     
+    //Employee functions
     function AddEmployee(address id, string memory _name, string memory _position, string memory _phoneNumber) public OnlyOwner{
         Employee memory e;
         e.nameEmpl = _name;
@@ -132,6 +134,7 @@ contract Reestr is Owned {
         delete employees[id];
     }
     
+    //Request functions
     function AddRequest(uint rType, string memory adr, uint area, uint cost, address newOwner) public Costs(cost) payable returns (bool)
     {
         Request memory r;
@@ -169,6 +172,7 @@ contract Reestr is Owned {
         return false;
     }
     
+    //Cost functions
     function EditCost(uint _cost) public OnlyOwner
     {
         cost = _cost;
@@ -178,4 +182,35 @@ contract Reestr is Owned {
         return cost;
     }
     
+    //Ownership functions
+    function AddOwnership(string memory _homeAddr, address _owner, uint _p) public{
+        Ownership memory o;
+        o.homeAddress = _homeAddr;
+        o.owner = _owner;
+        o.p = _p;
+        ownerships[_homeAddr].push(o);
+    }
+    
+    function DeleteOwnership(string memory _homeAddr, address _owner) public {
+        uint len = ownerships[_homeAddr].length;
+        uint temp;
+        for(uint i=0; i!= ownerships[_homeAddr].length; i++){
+            if(ownerships[_homeAddr][i].owner == _owner){
+                temp = i;
+            }
+        }
+        if(temp != ownerships[_homeAddr].length - 1){
+            ownerships[_homeAddr][temp]
+        }
+    }
+    
+    function GetOwnership(string memory _homeAddr) public returns (uint[] memory, address[] memory){
+        uint[] memory Op = new uint[](ownerships[_homeAddr].length);
+        address[] memory Oowner = new address[](ownerships[_homeAddr].length);
+        for(uint i=0; i!= ownerships[_homeAddr].length; i++){
+            Op[i] = ownerships[_homeAddr][i].p;
+            Oowner[i] = ownerships[_homeAddr][i].owner;
+        }
+        return (Op, Oowner);
+    }
 }
